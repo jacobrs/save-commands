@@ -6,7 +6,6 @@ spawn = require 'cross-spawn-async'
 _ = require 'underscore'
 fs = require 'fs'
 async = require 'async'
-$ = jQuery = require 'jquery'
 
 AtomSaveCommandsView = require './atom-save-commands-view'
 {CompositeDisposable,Directory,File} = require 'atom'
@@ -53,17 +52,17 @@ module.exports = AtomSaveCommands =
 			visible: true
 			priority: 100
 		)
-		@resultDiv = document.createElement('div')
-		@resultDiv.classList.add('save-result')
-		@resultDiv.classList.add('save-result-visible')
-		@resultDiv.classList.add('save-result-error')
-		@resultDiv.textContent = """
+		resultDiv = document.createElement('div')
+		resultDiv.classList.add('save-result')
+		resultDiv.classList.add('save-result-visible')
+		resultDiv.classList.add('save-result-error')
+		resultDiv.textContent = """
 			Malformed save command:
 			#{gc}
 
 			Usage: glob : command
 		"""
-		epanel.item.appendChild(@resultDiv)
+		epanel.item.appendChild(resultDiv)
 		setTimeout ()->
 			epanel.destroy()
 		, @config.timeout
@@ -172,11 +171,7 @@ module.exports = AtomSaveCommands =
 		# console.log 'Save-commands registered text editor observer'
 		@subscriptions.add atom.workspace.observeTextEditors (editor)=>
 			# console.log "Registered onSave event with '#{editor.getPath()}'"
-			@subscriptions.add editor.onDidSave (event)=>
-				try
-					@executeOn(event.path,'save-commands.json')
-				catch error
-					console.log error
+			@subscriptions.add editor.onDidSave (event)=> @executeOn(event.path,'save-commands.json')
 
 		@panel = atom.workspace.addBottomPanel(
 			item: document.createElement('div')
@@ -223,7 +218,10 @@ module.exports = AtomSaveCommands =
 			exists = file.existsSync()
 			isRoot = dir.isRoot()
 			if isRoot and exists is false
-				throw "Missing config file #{filename} on the path"
+				return false
+				# No need to throw error since users might not want a config file,
+				# Just return false and don't do anything
+				# throw "Missing config file #{filename} on the path"
 			break if isRoot or exists
 			dir = dir.getParent()
 
@@ -232,10 +230,6 @@ module.exports = AtomSaveCommands =
 		@config = {}
 		# @config.timeout 	= timeout ? 4000
 		# @config.commands	= commands ? []
-
-		splitOnce = (text,sep)->
-			components = text.split(sep)
-			return [components.shift(), components.join(sep)]
 
 		fs.readFile confFile, (err,data)=>
 			if data
